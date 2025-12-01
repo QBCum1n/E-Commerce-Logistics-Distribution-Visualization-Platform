@@ -10,7 +10,7 @@ import {
 	LoadingOutlined,
 	StopOutlined,
 	ClockCircleOutlined,
-    SyncOutlined
+	SyncOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
@@ -47,11 +47,11 @@ const CustomerPortal = () => {
 	const [searched, setSearched] = useState(false);
 	const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
 	const [user, setUser] = useState<{ email?: string } | null>(null);
-    
-    // 实时更新状态指示
-    const [isUpdating, setIsUpdating] = useState(false);
-    // 订阅引用
-    const subscriptionRef = useRef<RealtimeChannel | null>(null);
+
+	// 实时更新状态指示
+	const [isUpdating, setIsUpdating] = useState(false);
+	// 订阅引用
+	const subscriptionRef = useRef<RealtimeChannel | null>(null);
 
 	// 获取当前登录用户信息
 	useEffect(() => {
@@ -63,62 +63,55 @@ const CustomerPortal = () => {
 		};
 		getUser();
 
-        // 组件卸载时清理订阅
-        return () => {
-            if (subscriptionRef.current) {
-                supabase.removeChannel(subscriptionRef.current);
-            }
-        };
+		// 组件卸载时清理订阅
+		return () => {
+			if (subscriptionRef.current) {
+				supabase.removeChannel(subscriptionRef.current);
+			}
+		};
 	}, []);
 
-    // ---------------------------------------------------------------------------
-    // 实时订阅逻辑
-    // ---------------------------------------------------------------------------
-    const subscribeToOrderUpdates = (orderId: string) => {
-        // 1. 清理旧订阅
-        if (subscriptionRef.current) {
-            supabase.removeChannel(subscriptionRef.current);
-        }
+	// ---------------------------------------------------------------------------
+	// 实时订阅逻辑
+	// ---------------------------------------------------------------------------
+	const subscribeToOrderUpdates = (orderId: string) => {
+		// 1. 清理旧订阅
+		if (subscriptionRef.current) {
+			supabase.removeChannel(subscriptionRef.current);
+		}
 
-        // 2. 创建新频道
-        const channel = supabase.channel(`order-tracking-${orderId}`)
-            // 监听订单状态变更 (UPDATE)
-            .on(
-                'postgres_changes',
-                { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
-                (payload) => {
-                    setIsUpdating(true);
-                    setTrackingData(prev => {
-                        if (!prev) return null;
-                        return { ...prev, order: payload.new as Order };
-                    });
-                    message.info({ content: '订单状态已更新', icon: <SyncOutlined spin /> });
-                    setTimeout(() => setIsUpdating(false), 1500);
-                }
-            )
-            // 监听新轨迹插入 (INSERT)
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'logistics_trajectories', filter: `order_id=eq.${orderId}` },
-                (payload) => {
-                    setIsUpdating(true);
-                    // 注意：这里 payload.new 对应数据库行结构，需要确保它符合 TrajectoryPoint 类型
-                    const newTrajectory = payload.new as TrajectoryPoint;
-                    
-                    setTrackingData(prev => {
-                        if (!prev) return null;
-                        // 将新轨迹插入到数组最前面
-                        return { ...prev, trajectories: [newTrajectory, ...prev.trajectories] };
-                    });
-                    
-                    message.success({ content: '有新的物流动态', icon: <RocketOutlined /> });
-                    setTimeout(() => setIsUpdating(false), 1500);
-                }
-            )
-            .subscribe();
+		// 2. 创建新频道
+		const channel = supabase
+			.channel(`order-tracking-${orderId}`)
+			// 监听订单状态变更 (UPDATE)
+			.on("postgres_changes", { event: "UPDATE", schema: "public", table: "orders", filter: `id=eq.${orderId}` }, (payload) => {
+				setIsUpdating(true);
+				setTrackingData((prev) => {
+					if (!prev) return null;
+					return { ...prev, order: payload.new as Order };
+				});
+				message.info({ content: "订单状态已更新", icon: <SyncOutlined spin /> });
+				setTimeout(() => setIsUpdating(false), 1500);
+			})
+			// 监听新轨迹插入 (INSERT)
+			.on("postgres_changes", { event: "INSERT", schema: "public", table: "logistics_trajectories", filter: `order_id=eq.${orderId}` }, (payload) => {
+				setIsUpdating(true);
+				// 注意：这里 payload.new 对应数据库行结构，需要确保它符合 TrajectoryPoint 类型
+				const newTrajectory = payload.new as TrajectoryPoint;
 
-        subscriptionRef.current = channel;
-    };
+				setTrackingData((prev) => {
+					if (!prev) return null;
+					// 将新轨迹插入到数组最前面
+					return { ...prev, trajectories: [newTrajectory, ...prev.trajectories] };
+				});
+
+				message.success({ content: "有新的物流动态", icon: <RocketOutlined /> });
+				setTimeout(() => setIsUpdating(false), 1500);
+			})
+			.subscribe();
+
+		subscriptionRef.current = channel;
+	};
 
 	// ---------------------------------------------------------------------------
 	// 核心业务逻辑
@@ -158,9 +151,8 @@ const CustomerPortal = () => {
 				trajectories: (trajectoryData as TrajectoryPoint[]) || [],
 			});
 
-            // 4. 开启实时订阅
-            subscribeToOrderUpdates((orderData as Order).id);
-
+			// 4. 开启实时订阅
+			subscribeToOrderUpdates((orderData as Order).id);
 		} catch (error: unknown) {
 			const errorMessage = error instanceof Error ? error.message : "查询失败，请稍后重试";
 			message.error(errorMessage);
@@ -170,10 +162,10 @@ const CustomerPortal = () => {
 	};
 
 	const handleLogout = async () => {
-        // 登出前清理订阅
-        if (subscriptionRef.current) {
-            supabase.removeChannel(subscriptionRef.current);
-        }
+		// 登出前清理订阅
+		if (subscriptionRef.current) {
+			supabase.removeChannel(subscriptionRef.current);
+		}
 		try {
 			const { error } = await supabase.auth.signOut();
 			if (error) throw error;
@@ -216,7 +208,15 @@ const CustomerPortal = () => {
 				color: "text-sky-600",
 				bg: "bg-sky-50",
 				borderColor: "border-l-sky-600",
-				icon: <LoadingOutlined className="text-2xl text-sky-600" spin />,
+				// 修改点：将 LoadingOutlined 替换为带有动画的 CarOutlined
+				icon: (
+					<div className="relative w-8 h-8 flex items-center justify-center overflow-hidden">
+						{/* 移动的小车 */}
+						<CarOutlined className="text-2xl text-sky-600 animate-drive" />
+						{/* 可选：加上风速线效果，增强动感 */}
+						<div className="absolute bottom-1 left-0 w-full h-[2px] bg-sky-200 animate-road-move"></div>
+					</div>
+				),
 				title: order.estimated_delivery ? `预计 ${new Date(order.estimated_delivery).toLocaleDateString()} 送达` : "运输中 - 预计近日送达",
 				desc: trajectories[0]?.description ? `当前位置: ${trajectories[0].description}` : "包裹正在飞速奔向您",
 			},
@@ -246,20 +246,20 @@ const CustomerPortal = () => {
 				className={`
                     shadow-lg bg-white/95 backdrop-blur rounded-2xl border-l-4 ${theme.borderColor} 
                     animate-slide-up transition-all duration-500 ease-in-out
-                    ${isUpdating ? 'ring-2 ring-offset-2 ring-blue-200 scale-[1.02]' : ''}
+                    ${isUpdating ? "ring-2 ring-offset-2 ring-blue-200 scale-[1.02]" : ""}
                 `}>
 				<div className="flex justify-between items-start">
 					<div>
-                        <div className="flex items-center gap-2 mb-1">
-						    <Text type="secondary" className="text-xs font-medium uppercase tracking-wide opacity-70">
-							    当前状态
-						    </Text>
-                            {isUpdating && (
-                                <Tag color="processing" icon={<SyncOutlined spin />} className="border-0 bg-transparent p-0 m-0 text-blue-500 text-xs">
-                                    更新中...
-                                </Tag>
-                            )}
-                        </div>
+						<div className="flex items-center gap-2 mb-1">
+							<Text type="secondary" className="text-xs font-medium uppercase tracking-wide opacity-70">
+								当前状态
+							</Text>
+							{isUpdating && (
+								<Tag color="processing" icon={<SyncOutlined spin />} className="border-0 bg-transparent p-0 m-0 text-blue-500 text-xs">
+									更新中...
+								</Tag>
+							)}
+						</div>
 
 						<Title level={3} className={`!my-1 !text-xl ${theme.color} flex items-center gap-2 transition-colors duration-300`}>
 							{theme.title}
@@ -271,7 +271,10 @@ const CustomerPortal = () => {
 						</div>
 					</div>
 
-					<div className={`p-3 rounded-full ${theme.bg} flex items-center justify-center shadow-sm transition-all duration-500 ${isUpdating ? 'rotate-12 scale-110' : ''}`}>
+					<div
+						className={`p-3 rounded-full ${theme.bg} flex items-center justify-center shadow-sm transition-all duration-500 ${
+							isUpdating ? "rotate-12 scale-110" : ""
+						}`}>
 						{theme.icon}
 					</div>
 				</div>
@@ -385,16 +388,16 @@ const CustomerPortal = () => {
 
 												{trackingData.trajectories.length > 0 ? (
 													<Timeline
-                                                        pending={trackingData.order.status === 'shipping' ? '正在运输中...' : false}
+														pending={trackingData.order.status === "shipping" ? "正在运输中..." : false}
 														items={trackingData.trajectories.map((item, index) => {
 															const statusConfig = STATUS_MAP[item.status] || { text: item.status, color: "gray" };
-                                                            const isLatest = index === 0;
-                                                            
+															const isLatest = index === 0;
+
 															return {
 																color: isLatest ? "#1677ff" : "gray",
 																dot: isLatest ? (
-                                                                    <div className={`w-3 h-3 bg-blue-600 rounded-full ring-4 ring-blue-100 ${isUpdating ? 'animate-ping' : ''}`} />
-                                                                ) : null,
+																	<div className={`w-3 h-3 bg-blue-600 rounded-full ring-4 ring-blue-100 ${isUpdating ? "animate-ping" : ""}`} />
+																) : null,
 																children: (
 																	<div className={`pb-6 ${isLatest ? "text-slate-800" : "text-slate-400"} transition-colors duration-500`}>
 																		<div className="font-medium text-sm flex justify-between items-center mb-1">
@@ -408,7 +411,10 @@ const CustomerPortal = () => {
 																				})}
 																			</span>
 																		</div>
-																		<div className={`text-xs leading-relaxed opacity-80 bg-slate-50 p-2 rounded border border-slate-100 ${isLatest && isUpdating ? 'bg-blue-50 border-blue-100' : ''}`}>
+																		<div
+																			className={`text-xs leading-relaxed opacity-80 bg-slate-50 p-2 rounded border border-slate-100 ${
+																				isLatest && isUpdating ? "bg-blue-50 border-blue-100" : ""
+																			}`}>
 																			{item.description}
 																		</div>
 																	</div>
@@ -434,11 +440,36 @@ const CustomerPortal = () => {
 			</Layout>
 
 			<style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
+                /* 隐藏滚动条 */
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                
+                /* 卡片滑入动画 */
+                .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+                @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+                /* --- 新增：小车行驶动画 --- */
+                @keyframes drive {
+                    0% { transform: translateX(-3px) translateY(0); }
+                    25% { transform: translateX(0) translateY(-1px); }
+                    50% { transform: translateX(3px) translateY(0); }
+                    75% { transform: translateX(0) translateY(1px); }
+                    100% { transform: translateX(-3px) translateY(0); }
+                }
+                .animate-drive {
+                    animation: drive 1.5s infinite linear; /* 稍微调慢一点点，看起来更自然 */
+                }
+
+                /* --- 新增：路面/风速线动画 --- */
+                @keyframes roadMove {
+                    0% { transform: translateX(100%); opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { transform: translateX(-100%); opacity: 0; }
+                }
+                .animate-road-move {
+                    animation: roadMove 0.8s infinite linear;
+                }
+            `}</style>
 		</ConfigProvider>
 	);
 };

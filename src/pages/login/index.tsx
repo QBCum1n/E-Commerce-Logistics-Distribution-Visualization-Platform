@@ -3,7 +3,7 @@ import { Button, Card, Form, Input, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useToastMessage } from "@/hooks/useToastMessage";
-import { supabase } from "@/lib/supabaseClient"; 
+import { supabase } from "@/lib/supabaseClient";
 import loginBg from "@/assets/images/login.png";
 
 // 用户角色类型
@@ -22,74 +22,69 @@ const LoginPage = () => {
 	const { toastMessage, contextHolder } = useToastMessage();
 
 	const handleFinish = async (values: LoginFormValues) => {
-								setLoading(true);
-								try {
-									// 使用 supabase SDK 进行登录
-									const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-										email: values.username,
-										password: values.password,
-									});
+		setLoading(true);
+		try {
+			// 使用 supabase SDK 进行登录
+			const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+				email: values.username,
+				password: values.password,
+			});
 
-									if (authError) {
-										throw authError;
-									}
+			if (authError) {
+				throw authError;
+			}
 
-									// 获取用户ID
-									const userId = authData.user?.id;
-									if (!userId) {
-										throw new Error("获取用户信息失败");
-									}
+			// 获取用户ID
+			const userId = authData.user?.id;
+			if (!userId) {
+				throw new Error("获取用户信息失败");
+			}
 
-										// 从profiles表中获取用户角色信息
-									// 根据数据库结构，用户角色信息实际存储在profiles表中
-									const { data: profilesData, error: profilesError } = await supabase
-										.from('profiles')
-										.select('role')
-										.eq('id', userId)
-										.single();
+			// 从profiles表中获取用户角色信息
+			// 根据数据库结构，用户角色信息实际存储在profiles表中
+			const { data: profilesData, error: profilesError } = await supabase.from("profiles").select("role").eq("id", userId).single();
 
-									if (profilesError) {
-										// 如果profiles表查询失败，使用备用方案
-										console.warn('无法从profiles表获取用户角色，将尝试从用户邮箱推断');
-										// 备用方案：根据邮箱前缀判断用户角色
-										const email = authData.user?.email || '';
-										const userRole: UserRole = email.includes('admin') ? 'admin' : 'merchant';
-										navigateBasedOnRole(userRole);
-									} else {
-										// 成功获取用户角色
-										const userRole: UserRole = profilesData?.role as UserRole || 'merchant';
-										navigateBasedOnRole(userRole);
-									}
+			if (profilesError) {
+				// 如果profiles表查询失败，使用备用方案
+				console.warn("无法从profiles表获取用户角色，将尝试从用户邮箱推断");
+				// 备用方案：根据邮箱前缀判断用户角色
+				const email = authData.user?.email || "";
+				const userRole: UserRole = email.includes("admin") ? "admin" : "merchant";
+				navigateBasedOnRole(userRole);
+			} else {
+				// 成功获取用户角色
+				const userRole: UserRole = (profilesData?.role as UserRole) || "merchant";
+				navigateBasedOnRole(userRole);
+			}
+		} catch (err) {
+			// 错误处理
+			const description = err instanceof Error ? err.message : "登录失败，请检查账号或密码";
+			toastMessage("error", description);
+		} finally {
+			setLoading(false);
+		}
+	};
 
-								} catch (err) {
-									// 错误处理
-									const description = err instanceof Error ? err.message : "登录失败，请检查账号或密码";
-									toastMessage("error", description);
-								} finally {
-									setLoading(false);
-								}
-							};
-
-							// 根据用户角色进行页面跳转
-							const navigateBasedOnRole = (role: UserRole) => {
-								console.log("用户角色:", role);
-								toastMessage("success", "登录成功");
-								// 根据角色跳转到不同页面
-								if (role === "admin") {
-									setTimeout(() => navigate("/dashboard"), 800);
-								} else if(role === "merchant") {
-									setTimeout(() => navigate("/merchant/order"), 800);
-								} 
-								 // else {
-									// 默认情况下也进行跳转，避免无响应
-									// setTimeout(() => navigate("/merchant"), 800);
-								// }
-							};
+	// 根据用户角色进行页面跳转
+	const navigateBasedOnRole = (role: UserRole) => {
+		console.log("用户角色:", role);
+		toastMessage("success", "登录成功");
+		// 根据角色跳转到不同页面
+		if (role === "admin") {
+			setTimeout(() => navigate("/user"), 800);
+		} else if (role === "merchant") {
+			setTimeout(() => navigate("/merchant/order"), 800);
+		}
+		// else {
+		// 默认情况下也进行跳转，避免无响应
+		// setTimeout(() => navigate("/merchant"), 800);
+		// }
+	};
 
 	return (
 		<div className="relative min-h-screen w-full bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${loginBg})` }}>
-			<div className="absolute inset-0 bg-black/30" /> 
-            {/* 注意：加了 bg-black/30 遮罩让文字更清晰，如果不想要可以去掉 */}
+			<div className="absolute inset-0 bg-black/30" />
+			{/* 注意：加了 bg-black/30 遮罩让文字更清晰，如果不想要可以去掉 */}
 
 			{contextHolder}
 

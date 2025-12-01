@@ -4,7 +4,7 @@ import LoginPage from "@/pages/login";
 import MerchantPage from "@/pages/merchant";
 import LogisticsTrajectoryPage from "@/pages/merchant/trajectory/LogisticsTrajectoryPage";
 import OrderManagement from "@/pages/merchant/order";
-
+import UserPage from "@/pages/user";
 export const appRoutes: RouteObject[] = [
 	{
 		path: "/",
@@ -31,6 +31,10 @@ export const appRoutes: RouteObject[] = [
 				element: <LogisticsTrajectoryPage />,
 			},
 		],
+	},
+	{
+		path: "/user",
+		element: <UserPage />,
 	},
 	{
 		path: "*",

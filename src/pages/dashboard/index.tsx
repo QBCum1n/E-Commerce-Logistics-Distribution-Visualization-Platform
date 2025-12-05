@@ -35,7 +35,13 @@ const DashboardPage = () => {
 
 				<Card title="快速操作" className="shadow-sm">
 					<Space wrap>
-						<Button type="primary">创建发货单</Button>
+						<Link to="/trajectory">
+							<Button type="primary">查看物流轨迹</Button>
+						</Link>
+						<Link to="/dashboard/delivery-range">
+							<Button type="primary">配送范围管理</Button>
+						</Link>
+						<Button>创建发货单</Button>
 						<Button>导入订单</Button>
 						<Button>异常处理</Button>
 					</Space>

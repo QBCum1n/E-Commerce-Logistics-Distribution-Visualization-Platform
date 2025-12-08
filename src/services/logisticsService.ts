@@ -117,7 +117,7 @@ export const getOrdersTrajectories = async (orderIds: string[]): Promise<Logisti
 };
 
 // 更新单个轨迹点的坐标（用于路线纠偏）
-export const updateTrajectoryPointLocation = async (trajectoryId: string, lng: number, lat: number, description?: string): Promise<void> => {
+export const updateTrajectoryPointLocation = async (trajectoryId: string, lng: number, lat: number): Promise<void> => {
 	try {
 		const payload: Record<string, unknown> = {
 			location: {
@@ -127,9 +127,6 @@ export const updateTrajectoryPointLocation = async (trajectoryId: string, lng: n
 			updated_at: new Date().toISOString(),
 		};
 
-		if (description) {
-			payload.description = description;
-		}
 
 		const { error } = await supabase.from("logistics_trajectories").update(payload).eq("id", trajectoryId);
 

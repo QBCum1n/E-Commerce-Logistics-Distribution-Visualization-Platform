@@ -2,7 +2,7 @@
 import { Layout, ConfigProvider, Spin, Card, Empty } from "antd";
 import Header from "./components/header";
 import SearchCard from "./components/searchCard";
-import StatusCard from "./components/statusCard";
+import OrderItemsCard from "./components/OrderItemsCard";
 import TrajectoryTimeline from "./components/trajectoryTimeline";
 import OrderMap from "@/components/map/orderMap";
 import { useAuth } from "./hooks/useAuth";
@@ -33,12 +33,7 @@ const CustomerPortal = () => {
 
 				<Content className="relative w-full h-full mt-16">
 					<div className="absolute inset-0 w-full h-full">
-						<OrderMap 
-						trajectories={mapTrajectories} 
-						startPoint={startPoint} 
-						endPoint={endPoint} 
-						isSearching={loading} 
-						/>
+						<OrderMap trajectories={mapTrajectories} startPoint={startPoint} endPoint={endPoint} isSearching={loading} />
 					</div>
 
 					<div className="absolute inset-0 pointer-events-none flex flex-col md:flex-row">
@@ -53,7 +48,7 @@ const CustomerPortal = () => {
 										</div>
 									) : trackingData ? (
 										<div className="animate-slide-up flex flex-col gap-4 pb-10">
-											<StatusCard trackingData={trackingData} isUpdating={isUpdating} />
+											<OrderItemsCard orderItems={trackingData.orderItems} isUpdating={isUpdating} />
 											<TrajectoryTimeline
 												trajectories={trackingData.trajectories}
 												isShipping={trackingData.order.status === "shipping"}

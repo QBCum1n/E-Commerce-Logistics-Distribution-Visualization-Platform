@@ -29,7 +29,7 @@ type TrajectoryStatus = "pickup" | "in_transit" | "out_for_delivery" | "delivere
 
 // 状态颜色映射
 const STATUS_COLORS: Record<TrajectoryStatus, string> = {
-	pickup: "#1890ff", // 蓝色 - 已取件
+	pickup: "#1890ff", // 蓝色 - 已揽件
 	in_transit: "#faad14", // 橙色 - 运输中
 	out_for_delivery: "#52c41a", // 绿色 - 派送中
 	delivered: "#722ed1", // 紫色 - 已送达
@@ -37,7 +37,7 @@ const STATUS_COLORS: Record<TrajectoryStatus, string> = {
 
 // 状态名称映射
 const STATUS_NAMES: Record<TrajectoryStatus, string> = {
-	pickup: "已取件",
+	pickup: "已揽件",
 	in_transit: "运输中",
 	out_for_delivery: "派送中",
 	delivered: "已送达",
@@ -106,17 +106,27 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 
 	// 清除地图上的所有轨迹
 	const clearTrajectoriesFromMap = useCallback(() => {
-		// 清除标记点
-		markersRef.current.forEach(marker => {
-			mapInstanceRef.current?.remove(marker);
-		});
-		markersRef.current = [];
+		if (!mapInstanceRef.current) return;
 		
-		// 清除轨迹线
-		polylinesRef.current.forEach(polyline => {
-			mapInstanceRef.current?.remove(polyline);
+		// 使用requestAnimationFrame优化清除操作
+		requestAnimationFrame(() => {
+			// 清除标记点
+			markersRef.current.forEach(marker => {
+				// 清除波纹效果的定时器
+				const extData = marker.getExtData();
+				if (extData && extData.rippleInterval) {
+					clearInterval(extData.rippleInterval);
+				}
+				mapInstanceRef.current?.remove(marker);
+			});
+			markersRef.current = [];
+			
+			// 清除轨迹线
+			polylinesRef.current.forEach(polyline => {
+				mapInstanceRef.current?.remove(polyline);
+			});
+			polylinesRef.current = [];
 		});
-		polylinesRef.current = [];
 	}, []);
 
 	// 在地图上渲染单个轨迹
@@ -127,85 +137,8 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 
 		const { points } = trajectory;
 
-		// 转换坐标点
-		const path = points.map(point => {
-			const [lng, lat] = point.location.coordinates;
-			return new window.AMap!.LngLat(lng, lat);
-		});
-
-		// 创建轨迹线
-		const polyline = new window.AMap!.Polyline({
-			path: path,
-			strokeColor: "#1890ff",
-			strokeWeight: 4,
-			strokeOpacity: 0.8,
-			showDir: true,
-		});
-		
-		mapInstanceRef.current.add(polyline);
-		polylinesRef.current.push(polyline);
-
-		// 为每个轨迹点添加标记
-		points.forEach((point, index) => {
-			const [lng, lat] = point.location.coordinates;
-			const position = new window.AMap!.LngLat(lng, lat);
-			
-			// 创建标记点
-			const marker = new window.AMap!.Marker({
-				position: position,
-				icon: new window.AMap!.Icon({
-					size: new window.AMap!.Size(25, 34),
-					image: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-						<svg width="25" height="34" viewBox="0 0 25 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 19.8 12.5 34 12.5 34S25 19.8 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${STATUS_COLORS[point.status as TrajectoryStatus]}"/>
-							<text x="12.5" y="18" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${index + 1}</text>
-						</svg>
-					`)}`,
-					imageSize: new window.AMap!.Size(25, 34),
-				}),
-				offset: new window.AMap!.Pixel(-12, -34),
-			});
-			
-			// 创建信息窗体
-			const infoWindow = new window.AMap!.InfoWindow({
-				content: `
-					<div style="padding: 8px; max-width: 200px;">
-						<div style="font-weight: bold; margin-bottom: 5px;">${STATUS_NAMES[point.status as TrajectoryStatus]}</div>
-						<div style="font-size: 12px; color: #666; margin-bottom: 3px;">${point.description}</div>
-						<div style="font-size: 11px; color: #999;">${new Date(point.timestamp).toLocaleString()}</div>
-					</div>
-				`,
-				offset: new window.AMap!.Pixel(0, -34),
-			});
-			
-			// 点击标记点显示信息窗体
-			marker.on('click', () => {
-				infoWindow.open(mapInstanceRef.current!, position);
-			});
-			
-			mapInstanceRef.current.add(marker);
-			markersRef.current.push(marker);
-		});
-
-		// 调整地图视野以包含所有轨迹点
-		mapInstanceRef.current.setFitView([polyline, ...markersRef.current]);
-	}, [clearTrajectoriesFromMap]);
-
-	// 在地图上渲染多个轨迹
-	const renderAllTrajectoriesOnMap = useCallback((allTrajectories: LogisticsTrajectory[]) => {
-		if (!mapInstanceRef.current || !allTrajectories || allTrajectories.length === 0) return;
-
-		clearTrajectoriesFromMap();
-
-		// 为每个轨迹创建不同颜色的轨迹线
-		const colors = ["#1890ff", "#52c41a", "#faad14", "#722ed1", "#f5222d", "#13c2c2", "#eb2f96"];
-		
-		allTrajectories.forEach((trajectory, trajectoryIndex) => {
-			if (!trajectory.points || trajectory.points.length === 0) return;
-			
-			const color = colors[trajectoryIndex % colors.length];
-			const { points } = trajectory;
-
+		// 使用requestAnimationFrame优化轨迹渲染
+		requestAnimationFrame(() => {
 			// 转换坐标点
 			const path = points.map(point => {
 				const [lng, lat] = point.location.coordinates;
@@ -215,72 +148,280 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 			// 创建轨迹线
 			const polyline = new window.AMap!.Polyline({
 				path: path,
-				strokeColor: color,
-				strokeWeight: 3,
-				strokeOpacity: 0.7,
+				strokeColor: "#1890ff",
+				strokeWeight: 4,
+				strokeOpacity: 0.8,
 				showDir: true,
 			});
 			
-			mapInstanceRef.current.add(polyline);
+			mapInstanceRef.current!.add(polyline);
 			polylinesRef.current.push(polyline);
 
-			// 只为每个轨迹的起点和终点添加标记
-			const startPoint = points[0];
-			const endPoint = points[points.length - 1];
+			// 分批处理标记点渲染，避免一次性渲染过多导致卡顿
+			const renderMarkersBatch = (startIndex: number) => {
+				const batchSize = 5; // 每批处理5个标记点
+				const endIndex = Math.min(startIndex + batchSize, points.length);
+				
+				for (let i = startIndex; i < endIndex; i++) {
+					const point = points[i];
+					const [lng, lat] = point.location.coordinates;
+					const position = new window.AMap!.LngLat(lng, lat);
+					
+					// 创建标记点
+					const marker = new window.AMap!.Marker({
+						position: position,
+						icon: new window.AMap!.Icon({
+							size: new window.AMap!.Size(25, 34),
+							image: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+								<svg width="25" height="34" viewBox="0 0 25 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 19.8 12.5 34 12.5 34S25 19.8 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${STATUS_COLORS[point.status as TrajectoryStatus]}"/>
+									<text x="12.5" y="18" text-anchor="middle" fill="white" font-size="12" font-weight="bold">${i + 1}</text>
+								</svg>
+							`)}`,
+							imageSize: new window.AMap!.Size(25, 34),
+						}),
+						offset: new window.AMap!.Pixel(-12, -34),
+					});
+					
+					// 创建信息窗体
+					const infoWindow = new window.AMap!.InfoWindow({
+						content: `
+							<div style="padding: 8px; max-width: 200px;">
+								<div style="font-weight: bold; margin-bottom: 5px;">${STATUS_NAMES[point.status as TrajectoryStatus]}</div>
+								<div style="font-size: 12px; color: #666; margin-bottom: 3px;">${point.description}</div>
+								<div style="font-size: 11px; color: #999;">${new Date(point.timestamp).toLocaleString()}</div>
+							</div>
+						`,
+						offset: new window.AMap!.Pixel(0, -34),
+					});
+					
+					// 点击标记点显示信息窗体
+					marker.on('click', () => {
+						infoWindow.open(mapInstanceRef.current!, position);
+					});
+					
+					mapInstanceRef.current!.add(marker);
+					markersRef.current.push(marker);
 
-			// 起点标记
-			if (startPoint) {
-				const [lng, lat] = startPoint.location.coordinates;
-				const position = new window.AMap!.LngLat(lng, lat);
+					// 为最新的轨迹点（订单当前位置）添加波纹效果
+					if (i === points.length - 1) {
+						// 创建持续波纹效果的函数
+						const createContinuousRipple = () => {
+							// 创建波纹圆圈
+							const rippleCircle = new window.AMap!.Circle({
+								center: position,
+								radius: 50, // 初始半径
+								strokeColor: STATUS_COLORS[point.status as TrajectoryStatus],
+								strokeWeight: 2,
+								strokeOpacity: 0.8,
+								fillColor: STATUS_COLORS[point.status as TrajectoryStatus],
+								fillOpacity: 0.3,
+								zIndex: 10,
+							});
+							
+							mapInstanceRef.current!.add(rippleCircle);
+							
+							// 动画效果：波纹扩散
+							let radius = 50;
+							let opacity = 0.8;
+							const interval = setInterval(() => {
+								radius += 5;
+								opacity -= 0.02;
+								
+								if (opacity <= 0) {
+									clearInterval(interval);
+									mapInstanceRef.current?.remove(rippleCircle);
+									return;
+								}
+								
+								rippleCircle.setRadius(radius);
+								rippleCircle.setOptions({
+									strokeOpacity: opacity,
+									fillOpacity: opacity * 0.4,
+								});
+							}, 50);
+						};
+						
+						// 立即创建第一个波纹
+						createContinuousRipple();
+						
+						// 每隔2秒创建一个新的波纹，实现持续效果
+						const rippleInterval = setInterval(createContinuousRipple, 2000);
+						
+						// 将interval ID存储在标记上，以便在清除轨迹时能够清除
+						marker.setExtData({ rippleInterval });
+					}
+				}
 				
-				const startMarker = new window.AMap!.Marker({
-					position: position,
-					icon: new window.AMap!.Icon({
-						size: new window.AMap!.Size(25, 34),
-						image: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-							<svg width="25" height="34" viewBox="0 0 25 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-								<path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 19.8 12.5 34 12.5 34S25 19.8 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${color}"/>
-								<text x="12.5" y="18" text-anchor="middle" fill="white" font-size="12" font-weight="bold">起</text>
-							</svg>
-						`)}`,
-						imageSize: new window.AMap!.Size(25, 34),
-					}),
-					offset: new window.AMap!.Pixel(-12, -34),
-				});
-				
-				mapInstanceRef.current.add(startMarker);
-				markersRef.current.push(startMarker);
-			}
-
-			// 终点标记
-			if (endPoint) {
-				const [lng, lat] = endPoint.location.coordinates;
-				const position = new window.AMap!.LngLat(lng, lat);
-				
-				const endMarker = new window.AMap!.Marker({
-					position: position,
-					icon: new window.AMap!.Icon({
-						size: new window.AMap!.Size(25, 34),
-						image: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-							<svg width="25" height="34" viewBox="0 0 25 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-								<path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 19.8 12.5 34 12.5 34S25 19.8 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${color}"/>
-								<text x="12.5" y="18" text-anchor="middle" fill="white" font-size="12" font-weight="bold">终</text>
-							</svg>
-						`)}`,
-						imageSize: new window.AMap!.Size(25, 34),
-					}),
-					offset: new window.AMap!.Pixel(-12, -34),
-				});
-				
-				mapInstanceRef.current.add(endMarker);
-				markersRef.current.push(endMarker);
-			}
+				// 如果还有未处理的标记点，继续下一批
+				if (endIndex < points.length) {
+					requestAnimationFrame(() => renderMarkersBatch(endIndex));
+				} else {
+					// 所有标记点处理完成，调整地图视野
+					mapInstanceRef.current!.setFitView([polyline, ...markersRef.current]);
+				}
+			};
+			
+			// 开始第一批标记点渲染
+			renderMarkersBatch(0);
 		});
+	}, [clearTrajectoriesFromMap]);
 
-		// 调整地图视野以包含所有轨迹
-		if (polylinesRef.current.length > 0) {
-			mapInstanceRef.current.setFitView(polylinesRef.current);
-		}
+	// 在地图上渲染多个轨迹
+	const renderAllTrajectoriesOnMap = useCallback((allTrajectories: LogisticsTrajectory[]) => {
+		if (!mapInstanceRef.current || !allTrajectories || allTrajectories.length === 0) return;
+
+		clearTrajectoriesFromMap();
+
+		// 使用requestAnimationFrame优化多轨迹渲染
+		requestAnimationFrame(() => {
+			// 为每个轨迹创建不同颜色的轨迹线
+			const colors = ["#1890ff", "#52c41a", "#faad14", "#722ed1", "#f5222d", "#13c2c2", "#eb2f96"];
+			
+			// 分批处理轨迹渲染，避免一次性渲染过多导致卡顿
+			const renderTrajectoryBatch = (trajectoryIndex: number) => {
+				if (trajectoryIndex >= allTrajectories.length) {
+					// 所有轨迹处理完成，调整地图视野
+					if (polylinesRef.current.length > 0) {
+						mapInstanceRef.current!.setFitView(polylinesRef.current);
+					}
+					return;
+				}
+				
+				const trajectory = allTrajectories[trajectoryIndex];
+				if (!trajectory.points || trajectory.points.length === 0) {
+					// 如果当前轨迹没有点，继续处理下一个轨迹
+					requestAnimationFrame(() => renderTrajectoryBatch(trajectoryIndex + 1));
+					return;
+				}
+				
+				const color = colors[trajectoryIndex % colors.length];
+				const { points } = trajectory;
+
+				// 转换坐标点
+				const path = points.map(point => {
+					const [lng, lat] = point.location.coordinates;
+					return new window.AMap!.LngLat(lng, lat);
+				});
+
+				// 创建轨迹线
+				const polyline = new window.AMap!.Polyline({
+					path: path,
+					strokeColor: color,
+					strokeWeight: 3,
+					strokeOpacity: 0.7,
+					showDir: true,
+				});
+				
+				mapInstanceRef.current!.add(polyline);
+				polylinesRef.current.push(polyline);
+
+				// 只为每个轨迹的起点和终点添加标记
+				const startPoint = points[0];
+				const endPoint = points[points.length - 1];
+
+				// 起点标记
+				if (startPoint) {
+					const [lng, lat] = startPoint.location.coordinates;
+					const position = new window.AMap!.LngLat(lng, lat);
+					
+					const startMarker = new window.AMap!.Marker({
+						position: position,
+						icon: new window.AMap!.Icon({
+							size: new window.AMap!.Size(25, 34),
+							image: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+								<svg width="25" height="34" viewBox="0 0 25 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 19.8 12.5 34 12.5 34S25 19.8 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${color}"/>
+									<text x="12.5" y="18" text-anchor="middle" fill="white" font-size="12" font-weight="bold">起</text>
+								</svg>
+							`)}`,
+							imageSize: new window.AMap!.Size(25, 34),
+						}),
+						offset: new window.AMap!.Pixel(-12, -34),
+					});
+					
+					mapInstanceRef.current!.add(startMarker);
+					markersRef.current.push(startMarker);
+				}
+
+				// 终点标记
+				if (endPoint) {
+					const [lng, lat] = endPoint.location.coordinates;
+					const position = new window.AMap!.LngLat(lng, lat);
+					
+					const endMarker = new window.AMap!.Marker({
+						position: position,
+						icon: new window.AMap!.Icon({
+							size: new window.AMap!.Size(25, 34),
+							image: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+								<svg width="25" height="34" viewBox="0 0 25 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+									<path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 19.8 12.5 34 12.5 34S25 19.8 25 12.5C25 5.6 19.4 0 12.5 0Z" fill="${color}"/>
+									<text x="12.5" y="18" text-anchor="middle" fill="white" font-size="12" font-weight="bold">终</text>
+								</svg>
+							`)}`,
+							imageSize: new window.AMap!.Size(25, 34),
+						}),
+						offset: new window.AMap!.Pixel(-12, -34),
+					});
+					
+					mapInstanceRef.current!.add(endMarker);
+					markersRef.current.push(endMarker);
+
+					// 为终点（订单当前位置）添加波纹效果
+					// 创建持续波纹效果的函数
+					const createContinuousRipple = () => {
+						// 创建波纹圆圈
+						const rippleCircle = new window.AMap!.Circle({
+							center: position,
+							radius: 50, // 初始半径
+							strokeColor: color,
+							strokeWeight: 2,
+							strokeOpacity: 0.8,
+							fillColor: color,
+							fillOpacity: 0.3,
+							zIndex: 10,
+						});
+						
+						mapInstanceRef.current!.add(rippleCircle);
+						
+						// 动画效果：波纹扩散
+						let radius = 50;
+						let opacity = 0.8;
+						const interval = setInterval(() => {
+							radius += 5;
+							opacity -= 0.02;
+							
+							if (opacity <= 0) {
+								clearInterval(interval);
+								mapInstanceRef.current?.remove(rippleCircle);
+								return;
+							}
+							
+							rippleCircle.setRadius(radius);
+							rippleCircle.setOptions({
+								strokeOpacity: opacity,
+								fillOpacity: opacity * 0.4,
+							});
+						}, 50);
+					};
+					
+					// 立即创建第一个波纹
+					createContinuousRipple();
+					
+					// 每隔2秒创建一个新的波纹，实现持续效果
+					const rippleInterval = setInterval(createContinuousRipple, 2000);
+					
+					// 将interval ID存储在标记上，以便在清除轨迹时能够清除
+					endMarker.setExtData({ rippleInterval });
+				}
+				
+				// 继续处理下一个轨迹
+				requestAnimationFrame(() => renderTrajectoryBatch(trajectoryIndex + 1));
+			};
+			
+			// 开始处理第一个轨迹
+			renderTrajectoryBatch(0);
+		});
 	}, [clearTrajectoriesFromMap]);
 
 	// 处理订单选择
@@ -368,6 +509,7 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 	// 初始化地图
 	useEffect(() => {
 		let destroyed = false;
+		let animationFrameId: number | null = null;
 
 		const key = import.meta.env.VITE_AMAP_KEY;
 		const securityCode = import.meta.env.VITE_AMAP_SECURITY_CODE;
@@ -382,27 +524,36 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 
 		const init = async () => {
 			try {
-				const AMap = await AMapLoader.load({
-					key,
-					version: "2.0",
-					plugins: ["AMap.PlaceSearch", "AMap.AutoComplete"],
+				// 使用requestAnimationFrame优化地图加载
+				animationFrameId = requestAnimationFrame(() => {
+					AMapLoader.load({
+						key,
+						version: "2.0",
+						plugins: ["AMap.PlaceSearch", "AMap.AutoComplete"],
+					}).then((AMap) => {
+						if (destroyed || !containerRef.current) return;
+
+						// 再次使用requestAnimationFrame确保DOM已准备好
+						requestAnimationFrame(() => {
+							mapInstanceRef.current = new AMap.Map(containerRef.current, {
+								zoom: 13,
+								center: DEFAULT_CENTER,
+								viewMode: "3D",
+							});
+
+							window.AMap = AMap;
+							messageApi.success("地图加载成功");
+							setLoading(false);
+						});
+					}).catch((error) => {
+						console.error("地图初始化失败:", error);
+						messageApi.error("地图加载失败");
+						if (!destroyed) setLoading(false);
+					});
 				});
-
-				if (destroyed || !containerRef.current) return;
-
-				mapInstanceRef.current = new AMap.Map(containerRef.current, {
-					zoom: 13,
-					center: DEFAULT_CENTER,
-					viewMode: "3D",
-				});
-
-				window.AMap = AMap;
-
-				messageApi.success("地图加载成功");
 			} catch (error) {
 				console.error("地图初始化失败:", error);
 				messageApi.error("地图加载失败");
-			} finally {
 				if (!destroyed) setLoading(false);
 			}
 		};
@@ -411,6 +562,9 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 
 		return () => {
 			destroyed = true;
+			if (animationFrameId) {
+				cancelAnimationFrame(animationFrameId);
+			}
 			mapInstanceRef.current?.destroy();
 		};
 	}, [messageApi]);
@@ -430,7 +584,7 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 	}, [showAllTrajectories, loadAllTrajectories, orders]);
 
 	return (
-		<div style={{ position: "relative", width: "100%", height: "100%" }}>
+		<div style={{ position: "relative", width: "100%", height: "140%" }}>
 			{contextHolder}
 			{loading && (
 				<div
@@ -453,11 +607,11 @@ const TrajectoryMap = forwardRef<TrajectoryMapRef, TrajectoryMapProps>(({ orders
 			<Card
 				style={{
 					position: "absolute",
-					top: 510,
+					top: 0,
 					left: 10,
 					zIndex: 2,
 					width: "20%",
-					maxHeight: "50%",
+					maxHeight: "100%",
 					overflow: "auto",
 				}}
 				size="small"

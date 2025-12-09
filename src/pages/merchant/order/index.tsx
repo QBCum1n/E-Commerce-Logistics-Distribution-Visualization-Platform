@@ -11,7 +11,6 @@ import { useToastMessage } from "@/hooks/useToastMessage";
 import OrderDetailModal from "../../../components/orders/order-detail-modal";
 import DeleteModal from "../../../components/orders/delete-modal";
 import LogisticsProviderModal from "../../../components/orders/logistics-provider-modal";
-import CustomerLocation from "../../../components/orders/CustomerLocation";
 import { updateOrderLogisticsProvider } from "@/services/logisticsService";
 
 // -----------------------------------------------------------------------------

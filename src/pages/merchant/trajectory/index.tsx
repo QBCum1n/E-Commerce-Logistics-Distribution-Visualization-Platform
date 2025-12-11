@@ -2,14 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, Row, Col, Spin, message, Button, Switch, Tooltip } from "antd";
 import { getOrders, getOrdersInDeliveryRange } from "@/services/orderService";
 import { getCurrentUserShop } from "@/services/shopService";
-import TrajectoryMap from "@/components/map/trajectoryMap";
+import TrajectoryMap, { type TrajectoryMapRef } from "@/components/map/trajectoryMap";
 import type { Order } from "@/types/order";
 import type { Shop } from "@/services/shopService";
-
-// 从组件文件中导入类型
-type TrajectoryMapRef = {
-	handleDeliveryRangeUpdate: () => Promise<void>;
-};
 
 const LogisticsTrajectoryPage = () => {
 	const [loading, setLoading] = useState(true);
@@ -36,7 +31,7 @@ const LogisticsTrajectoryPage = () => {
 	// 加载订单列表
 	const loadOrders = useCallback(async (shop: Shop | null, onlyInRange: boolean) => {
 		try {
-			setLoading(true);
+			setLoading(true);// 显示加载状态
 			let data;
 			
 			if (shop && onlyInRange) {
@@ -44,7 +39,7 @@ const LogisticsTrajectoryPage = () => {
 				try {
 					data = await getOrdersInDeliveryRange(shop, {
 						page: 1,
-						pageSize: 20,
+						pageSize: 100000,
 						status: "ALL",
 						searchText: "",
 						sortField: "created_at",
@@ -56,7 +51,7 @@ const LogisticsTrajectoryPage = () => {
 					// 回退到获取所有订单
 					data = await getOrders({
 						page: 1,
-						pageSize: 20,
+						pageSize: 100000,
 						status: "ALL",
 						searchText: "",
 						sortField: "created_at",

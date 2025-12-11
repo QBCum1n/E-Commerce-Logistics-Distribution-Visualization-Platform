@@ -44,7 +44,7 @@ const STATUS_NAMES: Record<TrajectoryStatus, string> = {
 };
 
 // 地图组件暴露的方法类型
-interface TrajectoryMapRef {
+export interface TrajectoryMapRef {
 	handleDeliveryRangeUpdate: () => Promise<void>;
 }
 

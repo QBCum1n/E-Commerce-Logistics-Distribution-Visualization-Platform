@@ -2,14 +2,20 @@ import { useEffect, useRef } from "react";
 import * as echarts from "echarts";
 import type { Order } from "@/types/order";
 
+/**
+ * 配送时效分析图表组件
+ * @param orders - 订单数据数组
+ * @param height - 图表高度，默认400px
+ */
 interface DeliveryAnalysisProps {
 	orders: Order[];
 	height?: string;
 }
 
+// 配送时效分析图表组件
 const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({ orders, height = "400px" }) => {
-	const chartRef = useRef<HTMLDivElement>(null);
-	const chartInstanceRef = useRef<echarts.ECharts | null>(null);
+	const chartRef = useRef<HTMLDivElement>(null);// 图表容器引用
+	const chartInstanceRef = useRef<echarts.ECharts | null>(null);// 图表实例引用
 
 	useEffect(() => {
 		if (!chartRef.current) return;
@@ -63,6 +69,7 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({ orders, height = "4
 				axisPointer: {
 					type: "shadow",
 				},
+				// 自定义鼠标悬停的提示框内容
 				formatter: function(params: echarts.DefaultLabelFormatterCallbackParams) {
 					const param = Array.isArray(params) ? params[0] : params;
 					return `${param.name}<br/>平均配送时长: ${param.value} 小时`;
